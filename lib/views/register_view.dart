@@ -1,8 +1,7 @@
-import 'dart:developer';
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:mynotes/constants/routes.dart';
+import 'package:mynotes/utilities/show_error_dialog.dart';
 
 class RegisterView extends StatefulWidget {
   const RegisterView({Key? key}) : super(key: key);
@@ -53,20 +52,35 @@ class _RegisterViewState extends State<RegisterView> {
                 final email = _email.text;
                 final password = _password.text;
                 try {
-                  final userCredentials = await FirebaseAuth.instance
-                      .createUserWithEmailAndPassword(
-                          email: email, password: password);
-                  log(userCredentials.toString());
+                  await FirebaseAuth.instance.createUserWithEmailAndPassword(
+                    email: email,
+                    password: password,
+                  );
+                  final user = FirebaseAuth.instance.currentUser;
+                  await user?.sendEmailVerification();
+                  if (!mounted) return;
+                  Navigator.of(context).pushNamed(verifyEmailRoute);
                 } on FirebaseAuthException catch (e) {
                   if (e.code == 'weak-password') {
-                    log('Password must be atleast 6 characters long');
+                    await showErrorDialog(context,
+                        'Your password must have a minimum of 6 characters');
                   } else if (e.code == 'email-already-in-use') {
-                    log('Email is already in use');
+                    await showErrorDialog(context,
+                        'Looks like this email is already used for an account!');
                   } else if (e.code == 'invalid-email') {
-                    log('Invalid email entered');
+                    await showErrorDialog(
+                        context, 'Please enter a valid email');
                   } else {
-                    log('Oops, something went wrong!');
+                    await showErrorDialog(
+                      context,
+                      'Error: ${e.code}',
+                    );
                   }
+                } catch (e) {
+                  await showErrorDialog(
+                    context,
+                    'Something went wrong, please try again',
+                  );
                 }
               },
               child: const Text('Register')),
